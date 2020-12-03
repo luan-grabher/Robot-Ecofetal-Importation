@@ -1,6 +1,6 @@
 package teste;
 
-import importacaoExcelPadrao.EcofetalImportation;
+import EcofetalImportation.EcofetalImportation;
 import java.util.Map;
 import java.util.HashMap;
 
