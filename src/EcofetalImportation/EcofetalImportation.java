@@ -64,6 +64,11 @@ public class EcofetalImportation {
             colunasSantander.put("data", "B");
             colunasSantander.put("historico", "C");
             colunasSantander.put("valor", "F");
+            
+            Map<String, String> colunasBanrisul = new HashMap<>();
+            colunasSantander.put("data", "B");
+            colunasSantander.put("historico", "I;D");
+            colunasSantander.put("valor", "G");
 
             /**
              * ----------------------- TERMINA COLUNAS --------------------*
@@ -79,6 +84,7 @@ public class EcofetalImportation {
                     + templateBanco(9, "Bradesco", "Extrato;Bradesco;.xlsx", colunasBradesco)
                     + templateBanco(10, "CEF", "Extrato;Caixa;Federal;.xlsx", colunasCEF)
                     + templateBanco(11, "Santander", "SANTANDER;.xlsx", colunasSantander)
+                    + templateBanco(13, "Banrisul", "Banrisul;.xlsx", colunasBanrisul)
                     + templateBanco(2078, "BB Convenio", "Extrato;BB;Convenio;.xlsx", colunasBBConvenio)
                     + templateBanco(2138, "Servicoop", "SERVICOOP;.xlsx", colunasServicoop)
                     + impostos("IRRF", "V", 650, 101)
