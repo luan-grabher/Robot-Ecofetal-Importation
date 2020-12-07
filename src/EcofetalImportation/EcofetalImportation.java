@@ -66,9 +66,9 @@ public class EcofetalImportation {
             colunasSantander.put("valor", "F");
             
             Map<String, String> colunasBanrisul = new HashMap<>();
-            colunasSantander.put("data", "B");
-            colunasSantander.put("historico", "I;D");
-            colunasSantander.put("valor", "G");
+            colunasBanrisul.put("data", "B");
+            colunasBanrisul.put("historico", "I;D");
+            colunasBanrisul.put("valor", "G");
 
             /**
              * ----------------------- TERMINA COLUNAS --------------------*
