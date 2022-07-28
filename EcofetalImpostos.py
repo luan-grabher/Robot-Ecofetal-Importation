@@ -3,7 +3,7 @@ import sys
 import glob
 import pandas as pd
 import traceback
-from libs.Robot import Robot
+from robotpy.Robot import Robot
 
 # Initialize Robot with call_id(first argument)
 robot = Robot(sys.argv[1])
