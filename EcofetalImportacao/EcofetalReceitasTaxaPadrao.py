@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from fileManager.fileManager import textHasStringFilter, findFile
 from configparser import ConfigParser
 import builtins
@@ -17,6 +18,15 @@ def print(message):
     builtins.print(message)
     return log
 
+#Function to check if row of data has all columns to read with value 'nan'
+def rowHasAnyColumnToReadEmpty(row, columns):
+    for column in columns:
+        if column[0] != 'use columns':
+            column_to_read = [x.strip() for x in column[1].split('|')]
+            for element in column_to_read:
+                if str(row[element]) == 'nan':
+                    return True
+    return False
 
 # Def function to get data from excel
 def getExcelData(file_path, usecols, columns_to_read, header=1, prepareRowFunction=None):
@@ -29,7 +39,7 @@ def getExcelData(file_path, usecols, columns_to_read, header=1, prepareRowFuncti
     # For each row in the dataframe
     for index, row in df.iterrows():
         # Se a linha tiver vazias, tenta copiar a linha anterior
-        if row.isnull().sum() > 0:
+        if rowHasAnyColumnToReadEmpty(row, columns_to_read):
             #row is prepareRowFunction passing row, index and df if prepareRowFunction is defined and is Function
             if prepareRowFunction and callable(prepareRowFunction):
                 row = prepareRowFunction(row, index, df)
@@ -37,7 +47,7 @@ def getExcelData(file_path, usecols, columns_to_read, header=1, prepareRowFuncti
         item = {}
         
         # Se a row não estiver vazia
-        if row.isnull().sum() == 0:
+        if not rowHasAnyColumnToReadEmpty(row, columns_to_read):
             for column in columns_to_read:
                 # if the column[0] is not 'use columns'
                 if column[0] != 'use columns':
@@ -79,17 +89,30 @@ def excelDataToCsv(folder_path, file_name, sectionsName, prepareRowFunction=None
     columns = config.items(sectionsName + ' columns')
     usecols = config.get(sectionsName + ' columns', 'use columns')
     accounts = config.items(sectionsName + ' accounts')
+    history_code = config.get('history codes', sectionsName)
 
     # get data from receipts file
     data = getExcelData(
         file_path, usecols, columns, prepareRowFunction=prepareRowFunction)
     
+    #remove itens in data with 'date' = 'NaT'
+    data = [x for x in data if x['date'] != 'NaT']
+    
     #Normalize the data
-    for row in data:
+    for row in data:     
+        #set history code
+        row['history_code'] = history_code
+
         #convert 'date' to datetime
         row['date'] = pd.to_datetime(row['date'])
         #convert datetime to string in format dd/mm/yyyy
         row['date'] = row['date'].strftime('%d/%m/%Y')
+
+        #replace '.0 ' with ' ' in 'history'
+        row['history'] = row['history'].replace('.0 ', ' ')
+
+        #replace convert 'value' to BR currency
+        row['value'] = str(row['value']).replace(',','').replace('.',',')
 
         #If has not 'debit' or 'credit', set 'debit' and 'credit' to 0
         if not 'debit' in row:
@@ -110,9 +133,11 @@ def excelDataToCsv(folder_path, file_name, sectionsName, prepareRowFunction=None
         if isinstance(row['debit'], str):
             row['debit'] = 0
     
-    #save data to csv file in folder_path using ';' as separator and utf-8 encoding with file_name as 'sectionsName.csv'
+    #save data to csv file in folder_path using ';' as separator and utf-8 encoding with file_name as 'sectionsName.csv' without header
     df = pd.DataFrame(data)
-    df.to_csv(os.path.join(folder_path, sectionsName + '.csv'), sep=';', encoding='utf-8', index=False)
+    #order the fields in data by: date, debit, credit, history_code, history, value
+    df = df[['date', 'debit', 'credit', 'history_code', 'history', 'value']]    
+    df.to_csv(os.path.join(folder_path, sectionsName + '.csv'), sep=';', encoding='utf-8', index=False, header=False)
 
     #print save message
     print('Arquivo ' + file_name + ' salvo em ' + folder_path)
@@ -120,53 +145,50 @@ def excelDataToCsv(folder_path, file_name, sectionsName, prepareRowFunction=None
 
 # Receitas e Taxas Padrao
 def EcofetalReceitasTaxaPadrao(month, year, inipath='ecofetal-receitas-taxa-padrao.ini'):
-    '''try:'''
-    config.read(inipath, encoding='utf-8')
+    try:
+        config.read(inipath, encoding='utf-8')
 
-    if config.sections():
-        # in config file set paths.month to month with zero padding
-        config.set('paths', 'month', str(int(month)).zfill(2))
-        # in config file set paths.year to year
-        config.set('paths', 'year', str(int(year)))
+        if config.sections():
+            # in config file set paths.month to month with zero padding
+            config.set('paths', 'month', str(int(month)).zfill(2))
+            # in config file set paths.year to year
+            config.set('paths', 'year', str(int(year)))
 
-        # Get paths.receipts and paths.tax
-        receipts_folder = config.get('paths', 'receipts')
-        tax_folder = config.get('paths', 'tax')
+            # Get paths.receipts and paths.tax
+            receipts_folder = config.get('paths', 'receipts')
+            tax_folder = config.get('paths', 'tax')
 
-        # check if folders paths.receipts and paths.tax exist
-        if os.path.exists(receipts_folder) and os.path.exists(tax_folder):
-            receipts_file_filter = config.get('files', 'receipts')
-            tax_file_filter = config.get('files', 'tax')
+            # check if folders paths.receipts and paths.tax exist
+            if os.path.exists(receipts_folder) and os.path.exists(tax_folder):
+                receipts_file_filter = config.get('files', 'receipts')
+                tax_file_filter = config.get('files', 'tax')
 
-            # find receipts file
-            receipts_file = findFile(receipts_folder, receipts_file_filter)
-            # find tax file
-            tax_file = findFile(tax_folder, tax_file_filter)
+                # find receipts file
+                receipts_file = findFile(receipts_folder, receipts_file_filter)
+                # find tax file
+                tax_file = findFile(tax_folder, tax_file_filter)
 
-            # check if receipts file exists
-            if receipts_file:
-                # convert excel file to csv file
-                excelDataToCsv(receipts_folder, receipts_file, 'receipts', prepareRowFunction=prepareRowReceipt)
+                # check if receipts file exists
+                if receipts_file:
+                    # convert excel file to csv file
+                    excelDataToCsv(receipts_folder, receipts_file, 'receipts', prepareRowFunction=prepareRowReceipt)
+                else:
+                    print(
+                        "Arquivo de receitas não encontrado com o filtro: " + receipts_file_filter)
+
+                # check if tax file exists
+                if tax_file:
+                    # convert excel file to csv file
+                    excelDataToCsv(tax_folder, tax_file, 'tax')
+                else:
+                    print(
+                        'Arquivo de taxas não encontrado com o filtro: ' + tax_file_filter)
+
+                return log
             else:
-                print(
-                    "Arquivo de receitas não encontrado com o filtro: " + receipts_file_filter)
+                return print("Pasta de receitas não existe:\n '" + receipts_folder + "'\n ou pasta de taxas não existe:\n '" + tax_folder + "'")
 
-            # check if tax file exists
-            if tax_file:
-                # convert excel file to csv file
-                excelDataToCsv(tax_folder, tax_file, 'tax')
-            else:
-                print(
-                    'Arquivo de taxas não encontrado com o filtro: ' + tax_file_filter)
-
-            return log
         else:
-            return print("Pasta de receitas não existe:\n '" + receipts + "'\n ou pasta de taxas não existe:\n '" + tax + "'")
-
-    else:
-        return print("Arquivo de configuração  '" + inipath + "' não encontrado.")
-    '''except Exception as e:
-        return print("Erro inesperado:\n" + str(e))'''
-
-
-EcofetalReceitasTaxaPadrao(6, 2022)
+            return print("Arquivo de configuração  '" + inipath + "' não encontrado.")
+    except Exception as e:
+        return print("Erro inesperado:\n" + str(e))

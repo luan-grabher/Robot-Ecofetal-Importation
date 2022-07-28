@@ -4,6 +4,7 @@ import glob
 import pandas as pd
 import traceback
 from robotpy.Robot import Robot
+from EcofetalImportacao.EcofetalReceitasTaxaPadrao import EcofetalReceitasTaxaPadrao
 
 # Initialize Robot with call_id(first argument)
 robot = Robot(sys.argv[1])
@@ -87,7 +88,7 @@ try:
             file.write(impostos[imposto]['csv'])
             file.close()
 
-        retorno = 'Arquivos salvos na pasta ' + path
+        retorno = 'Arquivos de Impostos salvos na pasta ' + path + '\n' + EcofetalReceitasTaxaPadrao(mes,ano)
     else:
         retorno = "Arquivo nao encontrado para o filtro: " + filter
 except Exception as e:
@@ -95,5 +96,5 @@ except Exception as e:
     retorno = str(traceback.format_exc())
 
 # Set the json as the return
-robot.setReturn({'html': retorno})
+robot.setReturn(str(retorno))
 print(retorno)
