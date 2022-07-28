@@ -65,11 +65,58 @@ def prepareRowReceipt(row, index, df):
         #while row - 1 has 'Nome' and 'Emissão' nan, decrease index
         while str(df.iloc[index-1]['Nome']) == 'nan' and str(df.iloc[index-1]['Emissão']) == 'nan':
             index -= 1
-        newRow = df.iloc[index-1]
+        newRow = df.iloc[index-1].copy()
         newRow['Tipo pagamento'] = tipo_pagamento
         return newRow
     else:
         return row
+
+'''
+    #get data from receipts or taxs file
+'''
+def excelDataToCsv(folder_path, file_name, sectionsName, prepareRowFunction=None):
+    file_path = os.path.join(folder_path, file_name)
+    columns = config.items(sectionsName + ' columns')
+    usecols = config.get(sectionsName + ' columns', 'use columns')
+    accounts = config.items(sectionsName + ' accounts')
+
+    # get data from receipts file
+    data = getExcelData(
+        file_path, usecols, columns, prepareRowFunction=prepareRowFunction)
+    
+    #Normalize the data
+    for row in data:
+        #convert 'date' to datetime
+        row['date'] = pd.to_datetime(row['date'])
+        #convert datetime to string in format dd/mm/yyyy
+        row['date'] = row['date'].strftime('%d/%m/%Y')
+
+        #If has not 'debit' or 'credit', set 'debit' and 'credit' to 0
+        if not 'debit' in row:
+            row['debit'] = 'debit'
+        if not 'credit' in row:
+            row['credit'] = 'credit'    
+
+        #for each account in accounts, if field 'credit' or 'debit' has string filter in value of 'account', set value of field to key of account
+        for account in accounts:
+            if textHasStringFilter(str(row['credit']), account[1]):
+                row['credit'] = int(account[0])
+            if textHasStringFilter(str(row['debit']), account[1]):
+                row['debit'] = int(account[0])
+        
+        #if field 'credit' or 'debit' is string, set value to 0
+        if isinstance(row['credit'], str):
+            row['credit'] = 0
+        if isinstance(row['debit'], str):
+            row['debit'] = 0
+    
+    #save data to csv file in folder_path using ';' as separator and utf-8 encoding with file_name as 'sectionsName.csv'
+    df = pd.DataFrame(data)
+    df.to_csv(os.path.join(folder_path, sectionsName + '.csv'), sep=';', encoding='utf-8', index=False)
+
+    #print save message
+    print('Arquivo ' + file_name + ' salvo em ' + folder_path)
+    
 
 # Receitas e Taxas Padrao
 def EcofetalReceitasTaxaPadrao(month, year, inipath='ecofetal-receitas-taxa-padrao.ini'):
@@ -83,52 +130,31 @@ def EcofetalReceitasTaxaPadrao(month, year, inipath='ecofetal-receitas-taxa-padr
         config.set('paths', 'year', str(int(year)))
 
         # Get paths.receipts and paths.tax
-        receipts = config.get('paths', 'receipts')
-        tax = config.get('paths', 'tax')
+        receipts_folder = config.get('paths', 'receipts')
+        tax_folder = config.get('paths', 'tax')
 
         # check if folders paths.receipts and paths.tax exist
-        if os.path.exists(receipts) and os.path.exists(tax):
+        if os.path.exists(receipts_folder) and os.path.exists(tax_folder):
             receipts_file_filter = config.get('files', 'receipts')
             tax_file_filter = config.get('files', 'tax')
 
             # find receipts file
-            receipts_file = findFile(receipts, receipts_file_filter)
+            receipts_file = findFile(receipts_folder, receipts_file_filter)
             # find tax file
-            tax_file = findFile(tax, tax_file_filter)
+            tax_file = findFile(tax_folder, tax_file_filter)
 
             # check if receipts file exists
             if receipts_file:
-                receipts_path = os.path.join(receipts, receipts_file)
-                receipts_columns = config.items('receipts columns')
-                usecols = config.get('receipts columns', 'use columns')
-
-                # get data from receipts file
-                receipts = getExcelData(
-                    receipts_path, usecols, receipts_columns, prepareRowFunction=prepareRowReceipt)
-                
-                #convert sql string in format yyyy-mm-dd to dd/mm/yyyy in 'date'
-                for row in receipts:
-                    #convert 'date' to datetime
-                    row['date'] = pd.to_datetime(row['date'])
-                    #convert datetime to string in format dd/mm/yyyy
-                    row['date'] = row['date'].strftime('%d/%m/%Y')
-                    
-                    
-
-                
-                #save data to csv in desktop
-                receipts_csv = os.path.join(os.path.expanduser('~'), 'Desktop', 'receitas.csv')
-                pd.DataFrame(receipts).to_csv(receipts_csv, index=False)
-
-
-
+                # convert excel file to csv file
+                excelDataToCsv(receipts_folder, receipts_file, 'receipts', prepareRowFunction=prepareRowReceipt)
             else:
                 print(
                     "Arquivo de receitas não encontrado com o filtro: " + receipts_file_filter)
 
             # check if tax file exists
             if tax_file:
-                print("Taxas: " + tax_file)
+                # convert excel file to csv file
+                excelDataToCsv(tax_folder, tax_file, 'tax')
             else:
                 print(
                     'Arquivo de taxas não encontrado com o filtro: ' + tax_file_filter)
