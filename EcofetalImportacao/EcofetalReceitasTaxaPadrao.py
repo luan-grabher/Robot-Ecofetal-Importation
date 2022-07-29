@@ -84,7 +84,7 @@ def prepareRowReceipt(row, index, df):
 '''
     #get data from receipts or taxs file
 '''
-def excelDataToCsv(folder_path, file_name, sectionsName, prepareRowFunction=None):
+def excelDataToCsv(folder_path, file_name, sectionsName, prepareRowFunction=None, save_name = ""):
     file_path = os.path.join(folder_path, file_name)
     columns = config.items(sectionsName + ' columns')
     usecols = config.get(sectionsName + ' columns', 'use columns')
@@ -133,14 +133,14 @@ def excelDataToCsv(folder_path, file_name, sectionsName, prepareRowFunction=None
         if isinstance(row['debit'], str):
             row['debit'] = 0
     
-    #save data to csv file in folder_path using ';' as separator and utf-8 encoding with file_name as 'sectionsName.csv' without header
+    #save data to csv file in folder_path using ';' as separator,  file_name as 'save_name.csv' without header, encoding iso-8859-1
     df = pd.DataFrame(data)
     #order the fields in data by: date, debit, credit, history_code, history, value
     df = df[['date', 'debit', 'credit', 'history_code', 'history', 'value']]    
-    df.to_csv(os.path.join(folder_path, sectionsName + '.csv'), sep=';', encoding='utf-8', index=False, header=False)
+    df.to_csv(os.path.join(folder_path, save_name + '.csv'), sep=';', encoding='iso-8859-1' , index=False , header=False)
 
     #print save message
-    print('Arquivo ' + file_name + ' salvo em ' + folder_path)
+    print('Arquivo ' + save_name + '.csv salvo em ' + folder_path)
     
 
 # Receitas e Taxas Padrao
@@ -171,7 +171,7 @@ def EcofetalReceitasTaxaPadrao(month, year, inipath='ecofetal-receitas-taxa-padr
                 # check if receipts file exists
                 if receipts_file:
                     # convert excel file to csv file
-                    excelDataToCsv(receipts_folder, receipts_file, 'receipts', prepareRowFunction=prepareRowReceipt)
+                    excelDataToCsv(receipts_folder, receipts_file, 'receipts', prepareRowFunction=prepareRowReceipt, save_name='receitas')
                 else:
                     print(
                         "Arquivo de receitas não encontrado com o filtro: " + receipts_file_filter)
@@ -179,7 +179,7 @@ def EcofetalReceitasTaxaPadrao(month, year, inipath='ecofetal-receitas-taxa-padr
                 # check if tax file exists
                 if tax_file:
                     # convert excel file to csv file
-                    excelDataToCsv(tax_folder, tax_file, 'tax')
+                    excelDataToCsv(tax_folder, tax_file, 'tax', save_name='taxas')
                 else:
                     print(
                         'Arquivo de taxas não encontrado com o filtro: ' + tax_file_filter)
@@ -192,3 +192,6 @@ def EcofetalReceitasTaxaPadrao(month, year, inipath='ecofetal-receitas-taxa-padr
             return print("Arquivo de configuração  '" + inipath + "' não encontrado.")
     except Exception as e:
         return print("Erro inesperado:\n" + str(e))
+
+
+EcofetalReceitasTaxaPadrao(6,2022)
