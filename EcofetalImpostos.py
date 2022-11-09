@@ -3,12 +3,12 @@ import sys
 import glob
 import pandas as pd
 import traceback
-from robotpy.Robot import Robot
+#from robotpy.Robot import Robot
 from EcofetalImportacao.EcofetalReceitasTaxaPadrao import EcofetalReceitasTaxaPadrao
 from configparser import ConfigParser
 
 
-'''
+
 #PARA TESTES:
 class Robot(object):
     def __init__(self):
@@ -19,11 +19,11 @@ class Robot(object):
 
     def setReturn(self,  msg):
         print(msg)
-'''
-#robot = Robot()
+
+robot = Robot()
 
 # Initialize Robot with call_id(first argument)
-robot = Robot(sys.argv[1])
+#robot = Robot(sys.argv[1])
 
 try:
     config = ConfigParser()
