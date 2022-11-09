@@ -5,36 +5,52 @@ import pandas as pd
 import traceback
 from robotpy.Robot import Robot
 from EcofetalImportacao.EcofetalReceitasTaxaPadrao import EcofetalReceitasTaxaPadrao
+from configparser import ConfigParser
+
+
+'''
+#PARA TESTES:
+class Robot(object):
+    def __init__(self):
+        self.parameters = {
+            'mes': '10',
+            'ano': '2022',
+        }
+
+    def setReturn(self,  msg):
+        print(msg)
+'''
+#robot = Robot()
 
 # Initialize Robot with call_id(first argument)
 robot = Robot(sys.argv[1])
 
 try:
+    config = ConfigParser()
+    config.read("EcofetalImpostos.ini", encoding='utf-8')
 
     # Get 'mes' from parameters and put zero in front of mes if it is less than 10
     mes = robot.parameters['mes']
     if int(mes) < 10:
         mes = '0' + str(mes)
+    mes = str(mes)
+
+    config.set('paths', 'month', mes)
 
     # Get 'ano' from parameters
-    ano = robot.parameters['ano']
+    ano = str(robot.parameters['ano'])
+    config.set('paths', 'year', ano)
 
-    enterprisePath = 'Ecofetal  Serviço de Auxílio Diagnóstico e Terapia Ltda'
-    yearPath = 'Movimentos'
-    monthPath = 'Arquivos Importação'
+    path = config.get('paths', 'monthPath')
 
-    path = '\\\\heimerdinger\\docs\\contábil\\clientes\\' + enterprisePath + \
-        '\\Escrituração Mensal\\' + \
-        str(ano) + '\\' + yearPath + '\\' + str(mes) + '.' + str(ano) + '\\' + monthPath
-
-    # get first file with path + '\\CONTAS*RECEBIDAS*RETENC*.xlsx'
-    filter = path + '\\CONTAS*RECEBIDAS*RETENC*.xlsx'
+    # get first file with path + config.get('paths', 'fileFilter
+    filter = path + '\\' + config.get('paths', 'fileFilter')
     file = glob.glob(filter)
 
-    #if file is not empty
+    # if file is not empty
     if file:
         file = file[0]
-        
+
         # Impostos list
         impostos = {
             'IRRF': {'coluna': 'IRRF', 'conta': '650', 'hist': '101', 'csv': ''},
@@ -44,21 +60,24 @@ try:
             'CSLL': {'coluna': 'CSLL', 'conta': '649', 'hist': '105', 'csv': ''},
         }
 
-        #SQL date format: YYYY-MM-DD
+        # SQL date format: YYYY-MM-DD
         data = str(ano) + '-' + str(mes) + '-1'
 
         def createCsvRow(row, imposto):
             text = ';'.join([
-                '657', # Codigo empresa
-                '', # Participante debito
-                '', # Participante credito
-                data + '', # Data
-                impostos[imposto]['conta'] + '', # Conta Debito
-                '747', # Conta Credito
-                row['Nº Duplicata'] + '', # Documento
-                impostos[imposto]['hist'] + '', # Historico Padrao
-                str(row['Nota Fiscal']) + ' ' + row['Descrição'] + '', # Historico
-                str(row[impostos[imposto]['coluna']]).replace('.', ','), # Valor
+                config.get('contas', 'codigo_empresa'),
+                '',  # Participante debito
+                '',  # Participante credito
+                data + '',  # Data
+                impostos[imposto]['conta'] + '',  # Conta Debito
+                config.get('contas', 'conta_contabil_credito') + \
+                '',  # Conta Credito
+                row['Nº Duplicata'] + '',  # Documento
+                impostos[imposto]['hist'] + '',  # Historico Padrao
+                str(row['Nota Fiscal']) + ' ' + \
+                row['Descrição'] + '',  # Historico
+                str(row[impostos[imposto]['coluna']]
+                    ).replace('.', ','),  # Valor
                 '\n'
             ])
 
@@ -82,19 +101,22 @@ try:
                             # Write csv row
                             impostos[imposto]['csv'] += csvRow
 
-        #For each imposto, create csv utf-8 file and write csv
+        # For each imposto, create csv utf-8 file and write csv
         for imposto in impostos:
-            file = open(path + '\\' + impostos[imposto]['coluna'] + '.csv', 'w', encoding='utf-8')
+            file = open(
+                path + '\\' + impostos[imposto]['coluna'] + '.csv', 'w', encoding='utf-8')
             file.write(impostos[imposto]['csv'])
             file.close()
 
-        retorno = 'Arquivos de Impostos salvos na pasta ' + path + '\n' + EcofetalReceitasTaxaPadrao(mes,ano)
+        retorno = 'Arquivos de Impostos salvos na pasta ' + \
+            path + '\n' + EcofetalReceitasTaxaPadrao(mes, ano)
     else:
         retorno = "Arquivo nao encontrado para o filtro: " + filter
 except Exception as e:
-    #print stacktrace
+    # print stacktrace
     retorno = str(traceback.format_exc())
 
 # Set the json as the return
 robot.setReturn(str(retorno))
 print(retorno)
+sys.exit(0)
