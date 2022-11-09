@@ -3,12 +3,12 @@ import sys
 import glob
 import pandas as pd
 import traceback
-#from robotpy.Robot import Robot
+from robotpy.Robot import Robot
 from EcofetalImportacao.EcofetalReceitasTaxaPadrao import EcofetalReceitasTaxaPadrao
 from configparser import ConfigParser
 
 
-
+'''
 #PARA TESTES:
 class Robot(object):
     def __init__(self):
@@ -21,9 +21,10 @@ class Robot(object):
         print(msg)
 
 robot = Robot()
+'''
 
 # Initialize Robot with call_id(first argument)
-#robot = Robot(sys.argv[1])
+robot = Robot(sys.argv[1])
 
 try:
     config = ConfigParser()
@@ -109,7 +110,7 @@ try:
             file.close()
 
         retorno = 'Arquivos de Impostos salvos na pasta ' + \
-            path + '\n' + EcofetalReceitasTaxaPadrao(mes, ano)
+            path + '\n ' + EcofetalReceitasTaxaPadrao(mes, ano)
     else:
         retorno = "Arquivo nao encontrado para o filtro: " + filter
 except Exception as e:
